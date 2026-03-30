@@ -1,7 +1,6 @@
-from cv2 import mean
-from sympy import print_rcode
 import torch
 import torch.nn as nn
+
 
 class MergeTemporalDim(nn.Module):
     def __init__(self, T):
@@ -11,15 +10,17 @@ class MergeTemporalDim(nn.Module):
     def forward(self, x_seq: torch.Tensor):
         return x_seq.flatten(0, 1).contiguous()
 
+
 class ExpandTemporalDim(nn.Module):
     def __init__(self, T):
         super().__init__()
         self.T = T
 
     def forward(self, x_seq: torch.Tensor):
-        y_shape = [self.T, int(x_seq.shape[0]/self.T)]
+        y_shape = [self.T, int(x_seq.shape[0] / self.T)]
         y_shape.extend(x_seq.shape[1:])
         return x_seq.view(y_shape)
+
 
 class ZIF(torch.autograd.Function):
     @staticmethod
@@ -38,6 +39,7 @@ class ZIF(torch.autograd.Function):
         grad_input = grad_input * tmp
         return grad_input, None
 
+
 class GradFloor(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
@@ -47,11 +49,15 @@ class GradFloor(torch.autograd.Function):
     def backward(ctx, grad_output):
         return grad_output
 
+
 myfloor = GradFloor.apply
 
+
 class IF(nn.Module):
-    def __init__(self, T=0, L=8, thresh=8.0, tau=1., gama=1.0):
+    def __init__(self, T=0, L=8, thresh=1.0, tau=1., gama=1.0):
         super(IF, self).__init__()
+        # This threshold value is critical for SNN gradient flow.
+        # Too large (e.g., 8.0) will make (mem - thresh) far from 0/1 and result in zero surrogate gradient.
         self.act = ZIF.apply
         self.thresh = nn.Parameter(torch.tensor([thresh]), requires_grad=True)
         self.tau = tau
@@ -78,9 +84,10 @@ class IF(nn.Module):
         else:
             x = x / self.thresh
             x = torch.clamp(x, 0, 1)
-            x = myfloor(x*self.L+0.5)/self.L
+            x = myfloor(x * self.L + 0.5) / self.L
             x = x * self.thresh
         return x
+
 
 def add_dimention(x, T):
     x.unsqueeze_(1)

@@ -1,4 +1,3 @@
-import torch.nn as nn
 from Models.layer import *
 
 cfg = {
@@ -34,9 +33,10 @@ cfg = {
 
 
 class VGG(nn.Module):
-    def __init__(self, vgg_name, num_classes, dropout):
+    def __init__(self, vgg_name, num_classes, dropout, nameDataset: str, in_channels: int = 3):
         super(VGG, self).__init__()
-        self.init_channels = 3
+        self.nameDataset: str = nameDataset
+        self.init_channels = in_channels
         self.T = 0
         self.merge = MergeTemporalDim(0)
         self.expand = ExpandTemporalDim(0)
@@ -49,7 +49,7 @@ class VGG(nn.Module):
         if num_classes == 1000:
             self.classifier = nn.Sequential(
                 nn.Flatten(),
-                nn.Linear(512*7*7, 4096),
+                nn.Linear(512 * 7 * 7, 4096),
                 IF(),
                 nn.Dropout(dropout),
                 nn.Linear(4096, 4096),
@@ -105,7 +105,12 @@ class VGG(nn.Module):
 
     def forward(self, x):
         if self.T > 0:
-            x = add_dimention(x, self.T)
+            # x has shape (B, T, C, H, W) for DVS; (B, C, H, W) for other datasets.
+            if "dvs" not in self.nameDataset.lower():
+                x = add_dimention(x, self.T)
+            else:
+                x = x.permute(1, 0, 2, 3, 4)
+            # (T, B, C, H, W)
             x = self.merge(x)
         out = self.layer1(x)
         out = self.layer2(out)
@@ -114,13 +119,16 @@ class VGG(nn.Module):
         out = self.layer5(out)
         out = self.classifier(out)
         if self.T > 0:
+            # (T, B, C, H, W)
             out = self.expand(out)
         return out
 
+
 class VGG_woBN(nn.Module):
-    def __init__(self, vgg_name, num_classes, dropout):
+    def __init__(self, vgg_name, num_classes, dropout, nameDataset: str, in_channels: int = 3):
         super(VGG_woBN, self).__init__()
-        self.init_channels = 3
+        self.nameDataset: str = nameDataset
+        self.init_channels = in_channels
         self.T = 0
         self.merge = MergeTemporalDim(0)
         self.expand = ExpandTemporalDim(0)
@@ -132,7 +140,7 @@ class VGG_woBN(nn.Module):
         if num_classes == 1000:
             self.classifier = nn.Sequential(
                 nn.Flatten(),
-                nn.Linear(512*7*7, 4096),
+                nn.Linear(512 * 7 * 7, 4096),
                 IF(),
                 nn.Dropout(dropout),
                 nn.Linear(4096, 4096),
@@ -188,7 +196,12 @@ class VGG_woBN(nn.Module):
 
     def forward(self, x):
         if self.T > 0:
-            x = add_dimention(x, self.T)
+            # x has shape (B, T, C, H, W) for DVS; (B, C, H, W) for other datasets.
+            if "dvs" not in self.nameDataset.lower():
+                x = add_dimention(x, self.T)
+            else:
+                x = x.permute(1, 0, 2, 3, 4)
+            # (T, B, C, H, W) -> (T*B, C, H, W)
             x = self.merge(x)
         out = self.layer1(x)
         out = self.layer2(out)
@@ -197,14 +210,22 @@ class VGG_woBN(nn.Module):
         out = self.layer5(out)
         out = self.classifier(out)
         if self.T > 0:
+            # (T, B, C, H, W)
             out = self.expand(out)
         return out
+
 
 def vgg16(num_classes, dropout=0.):
     return VGG('VGG16', num_classes, dropout)
 
+
 def vgg16_wobn(num_classes, dropout=0.1):
     return VGG_woBN('VGG16', num_classes, dropout)
+
+
+def vgg11(num_classes, dropout=0., nameDataset: str = "CIFAR10-DVS", inChannels: int = 3):
+    return VGG('VGG11', num_classes, dropout, nameDataset=nameDataset, in_channels=inChannels)
+
 
 def vgg19(num_classes, dropout):
     return VGG('VGG19', num_classes, dropout)

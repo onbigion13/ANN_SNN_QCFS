@@ -1,14 +1,12 @@
+import logging
+import os
+import random
+
+import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
-from tqdm import tqdm
-import torch.nn.functional as F
-import numpy as np
-import random
-import os
-import logging
-from Models import IF
+
 
 def seed_all(seed=1029):
     random.seed(seed)
@@ -19,6 +17,7 @@ def seed_all(seed=1029):
     torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
 
 def get_logger(filename, verbosity=1, name=None):
     level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
@@ -34,6 +33,7 @@ def get_logger(filename, verbosity=1, name=None):
     sh.setFormatter(formatter)
     logger.addHandler(sh)
     return logger
+
 
 def train(model, device, train_loader, criterion, optimizer, T):
     running_loss = 0
