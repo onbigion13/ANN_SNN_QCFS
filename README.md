@@ -1,4 +1,9 @@
 # ANN_SNN_QCFS
+
+###  Fork 自官方最新实现，用于作为 DSL 方法的 DVS 数据集的逐延迟泛化性对比方法。
+
+
+
 Code for paper "Optimal ANN-SNN conversion for high-accuracy and ultra-low-latency spiking neural networks"
 
 Reproducable and fix random seed. 
